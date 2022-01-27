@@ -82,7 +82,7 @@ function foo() {
 ```
 
 ```js
-// 准备好声明变量，使用链分配是比较好的做法，不会产生任何意料之外的全局变量
+// 准备好声明变量, 使用链分配是比较好的做法, 不会产生任何意料之外的全局变量
 function foo() {
   var a, b;
   a = b = 0; // 两个均为局部变量
@@ -136,9 +136,9 @@ var global = (function () {
 
 但是这个不适用于 ECMAScript 5 严格模式
 
-所以，在严格模式下时，你必须采取不同的形式。
+所以, 在严格模式下时, 你必须采取不同的形式。
 
-例如，你正在开发一个 JavaScript 库，你可以将你的代码包裹在一个即时函数中，然后从全局作用域中，传递一个引用指向 this 作为你即时函数的参数。
+例如, 你正在开发一个 JavaScript 库, 你可以将你的代码包裹在一个即时函数中, 然后从全局作用域中, 传递一个引用指向 this 作为你即时函数的参数。
 
 ### 单 var 形式
 
@@ -220,3 +220,154 @@ func();
 
 1. 第一阶段: 函数声明以及正常格式的参数创建: 这是一个解析和进入上下文的阶段
 2. 第二阶段: 代码执行: 函数表达式和不合格的标识符(声明的变量)被创建
+
+### For 循环
+
+在 for 循环中, 你可以循环取得数组或是数组类似对象的值, 譬如 arguments 和 HTMLCollection 对象。
+
+```js
+// 次佳的循环
+for (var i = 0; i < arguments.length; i++) {
+  // do something
+}
+```
+
+这种形式的循环的不足在于每次循环的时候数组的长度都要去获取下。
+
+这会降低你的代码, 尤其当 array 不是数组, 而是一个 HTMLCollection 对象的时候。
+
+HTMLCollection 指的是 DOM 方法返回的对象
+
+```
+document.getElementsByName()
+document.getElementsByClassName()
+document.getElementsByTagName()
+```
+
+还有其他一些 HTMLCollections, 这些是在 DOM 标准之前引进并且现在还在使用的。
+
+```
+document.images: 页面上所有的图片元素
+document.links: 所有 a 标签元素
+document.forms: 所有表单
+document.forms[0].elements: 页面上第一个表单中的所有域
+```
+
+集合的麻烦在于它们实时查询基本文档(HTML 页面)
+
+这意味着每次你访问任何集合的长度, 你要实时查询 DOM, 而 DOM 操作一般都是比较昂贵的。
+
+这就是为什么循环获取值时, 缓存数组(或集合)的长度是比较好的形式
+
+```js
+// 这样, 在这个循环过程中, 你只检索了一次长度值。
+for (var i = 0, max = array.length; i < max; i++) {
+  // do something
+}
+```
+
+如果明确想要修改循环中的集合的时候(例如, 添加更多的 DOM 元素), 你可能更喜欢长度更新而不是常量。
+
+我们可以把变量从循环中提取出来
+
+```js
+function looper() {
+  var i = 0,
+    max,
+    array = [];
+  for (i = 0, max = array.length; i < max; i++) {
+    // do something
+  }
+}
+```
+
+这种形式具有一致性的好处, 因为你坚持了单一 var 形式
+
+不足在于当重构代码的时候, 复制和粘贴整个循环有点困难。
+
+例如, 你从一个函数复制了一个循环到另一个函数, 你不得不去确定你能够把 i 和 max 引入新的函数(如果在这里没有用的话, 很有可能你要从原函数中把它们删掉)。
+
+还有两种变化的形式
+
+- 少了一个变量(max)
+- 向下数到 0, 通常更快, 因为和 0 做比较要比和数组长度或是其他不是 0 的东西作比较更有效率
+
+```js
+// 第一种变化
+var i, arr = []
+for(i = arr.length; i--){
+    // do something
+}
+
+// 第二种变化
+var arr = [], i = arr.length
+while(i--){
+    // do something
+}
+```
+
+### for-in 循环
+
+for-in 循环应该用在非数组对象的遍历上, 使用 for-in 进行循环也被称为枚举
+
+有个很重要的 hasOwnProperty 方法, 当遍历对象属性可以过滤掉从原型链上下来的属性
+
+```js
+// 对象
+var man = { hands: 2, legs: 2, heads: 1 };
+
+// 一个方法添加给所有对象
+if (typeof Object.prototype.clone === 'undefined') {
+  Object.prototype.clone = function () {};
+}
+```
+
+在这个例子中, 我们有一个使用对象字面量定义的名叫 man 的对象。在 man 定义完成后的某个地方, 在对象原型上增加了一个很有用的名叫 clone()的方法。
+
+此原型链是实时的, 这就意味着所有的对象自动可以访问新的方法。
+
+为了避免枚举 man 的时候出现 clone()方法, 你需要应用 hasOwnProperty()方法过滤原型属性。
+
+如果不做过滤, 会导致 clone()函数显示出来, 在大多数情况下这是不希望出现的。
+
+```js
+// 不做过滤
+for (var key in man) {
+  console.log(key, ':', man[key]);
+}
+// hands: 2
+// legs: 2
+// heads: 1
+// clone: function()
+
+// 过滤
+for (var key in man) {
+  if (man.hasOwnProperty(key)) console.log(key, ':', man[key]);
+}
+// hands: 2
+// legs: 2
+// heads: 1
+
+// 另一种过滤
+for (var key in man) {
+  if (Object.prototype.hasOwnProperty.call(man, key)) {
+    console.log(key, ':', man[key]);
+  }
+}
+
+// 其好处在于在man对象重新定义hasOwnProperty情况下避免命名冲突。
+// 也避免了长属性查找对象的所有方法, 你可以使用局部变量“缓存”它。
+var key,
+  hasOwn = Object.property.hasOwnProperty;
+for (key in man) {
+  if (hasOwn.call(man, key)) {
+    console.log(key, ':', man[key]);
+  }
+}
+```
+
+严格来说, 不使用 hasOwnProperty()并不是一个错误。
+
+根据任务以及你对代码的自信程度, 你可以跳过它以提高些许的循环速度。
+
+但是当你对当前对象内容（和其原型链）不确定的时候, 添加 hasOwnProperty()更加保险些。
