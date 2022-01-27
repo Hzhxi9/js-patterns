@@ -169,8 +169,54 @@ function func() {
 另外一个例子使用 DOM 引用的时候, 就可以使用单一 var 把 DOM 引用一起指定为局部变量
 
 ```js
-function updateElement(){
-    var el = document.getElementById('root'),
-        style = el.style;
+function updateElement() {
+  var el = document.getElementById('root'),
+    style = el.style;
 }
 ```
+
+### 预解析： var 散步问题
+
+JavaScript 中, 可以在函数的任何位置声明多个 var 语句, 并且它们就好像是在函数顶部声明一样发挥作用, 这种行为称为 hoisting
+
+当你使用了一个变量,然后不久在函数中又重新声明的话,就可能产生逻辑错误。
+
+对于 JavaScript, 只要你的变量是在同一个作用域中(同一函数), 它都被当做是声明的, 即使是它在 var 声明前使用的时候。
+
+```js
+name = 'global'; // 全局变量
+function func() {
+  console.log(name); // undefined
+  var name = 'local';
+  console.log(name); // local
+}
+
+func();
+```
+
+在这个例子中,你可能会以为第一个 alert 弹出的是"global",第二个弹出"local"。
+
+这种期许是可以理解的, 因为在第一个 alert 的时候,name 未声明, 此时函数肯定很自然而然地看全局变量 name
+
+但是实际上并不是这么工作的, 第一个 alert 会弹出"undefined"是因为 name 被当做了函数的局部变量(尽管是之后声明的), 所有的变量声明当被悬置到函数的顶部了。
+
+因此, 为了避免这种混乱, 最好是预先声明你想使用的全部变量。
+
+```js
+// 等同于
+name = 'global';
+function func() {
+  var name;
+  console.log(name); // undefined
+  name = 'local';
+  console.log(name); // local
+}
+func();
+```
+
+#### 提升深层的东西
+
+代码处理分两个阶段
+
+1. 第一阶段: 函数声明以及正常格式的参数创建: 这是一个解析和进入上下文的阶段
+2. 第二阶段: 代码执行: 函数表达式和不合格的标识符(声明的变量)被创建
