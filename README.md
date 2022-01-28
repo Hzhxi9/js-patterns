@@ -371,3 +371,107 @@ for (key in man) {
 根据任务以及你对代码的自信程度, 你可以跳过它以提高些许的循环速度。
 
 但是当你对当前对象内容（和其原型链）不确定的时候, 添加 hasOwnProperty()更加保险些。
+
+### 扩展内置原型
+
+增加内置的构造函数原型(如 Object(), 或者 Function())挺诱人的, 但是这严重降低了可维护性, 这会使代码变得难以预测。
+
+另外, 属性添加到原型中, 可能会导致不使用 hasOwnProperty 属性时在循环中显示出来, 这会造成混乱。
+
+### 避免隐式类型转换
+
+JavaScript 的变量在比较的时候会隐式类型转换, 为避免引起混乱的隐含类型转换, 在比较值和表达式类型的时候始终使用 === 和 !== 操作符
+
+### 避免 eval()
+
+此方法接受任意的字符串, 并当作 JavaScript 代码来使用
+
+当有问题的代码是事先知道的(不是运行时确定的), 没有理由使用 eval()
+
+如果代码是在运行时动态生成的, 有一个更好的方式不使用 eval 而达到同样的目标
+
+例如, 用方括号表示法来访问动态属性会更好更简单
+
+```js
+// bad
+var property = "name";
+console.log(eval("obj." + property));
+
+// better
+var property = "name"；
+console.log(obj[property])
+```
+
+使用 eval 会带来安全隐患, 因为被执行的代码(例如从网络来)可能已被篡改
+
+比如当处理 Ajax 请求得到的 JSON 代码的时候, 最好使用 JavaScript 内置方法来解析 JSON 代码, 以确保安全和有效
+
+如浏览器不支持 JSON.parse, 可以使用来自 JSON.org 的库
+
+同样重要的是要记住, 给 setInterval()、setTimeout() 和 Function()构造函数传递字符串, 大部分情况下与使用 eval()是类似的, 因此要避免
+
+```js
+// bad
+setTimeout('func()', 1000);
+setTimeout('func(1, 2, 3)', 1000);
+
+// better
+setTimeout(func, 1000);
+setTimeout(function () {
+  func(1, 2, 3);
+}, 1000);
+```
+
+使用 new Function() 构造函数就类似于 eval() 就类似于 eval(), 应小心接近
+
+如果必须要要使用 eval(), 可以考虑使用 new Function() 代替
+
+有个潜在的好处, 在 new Function()中做代码评估是在局部函数作用域中运行的, 所以代码中任何通过 var 定义的变量都不会自动变成全局变量
+
+另一种方法来阻止自动全局变量是封装 eval()调用到一个即时函数中
+
+```js
+console.log(typeof un); // undefined
+console.log(typeof deux); // undefined
+console.log(typeof trois); // undefined
+
+// 使用 eval 执行函数字符串
+var jsString = 'var un = 1; console.log(un);';
+eval(jsString); // 1
+
+// 使用 new Function 执行函数字符串
+jsString = 'var deux = 2; console.log(deux);';
+new Function(jsString)(); // 2
+
+// 使用封装 eval 执行函数字符串
+jsString = 'var trois = 3; console.log(trois);';
+(function () {
+  eval(jsString);
+})(); // 3
+
+console.log(typeof un); // number
+console.log(typeof deux); // undefined
+console.log(typeof trois); // undefined
+```
+
+另一点 eval() 和 Function 构造函数不同的是
+
+eval() 可以干扰作用域链, 而 Function()更安分守己
+
+不管你在那里执行 Function(), 它只看到 局部作用域, 所以其能很好的避免本地变量污染
+
+在下面这个例子中, eval()可以访问和修改它外部作用域中的变量
+
+```js
+(function () {
+  var local = 1;
+  eval('local = 3; console.log(local);'); // 3
+  console.log(local); // 3
+})();
+
+// 使用Function和new Function是相同的
+(function(){
+  var local = 1;
+  Function("console.log(typeof local);")(); // undefined
+})
+```
