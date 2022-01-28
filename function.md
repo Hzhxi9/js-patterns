@@ -114,4 +114,128 @@ foo();
 
   但是规范明确规定了表达式语句不能以关键字 function 开头
 
-  而这实际上就是说, 函数表达式同样也不能出现在 Statement 语句或 Block（块）中（因为 Block（块）就是由 Statement 语句构成的）。
+  而这实际上就是说, 函数表达式同样也不能出现在 Statement 语句或 Block（块）中（因为 Block（块）就是由 Statement 语句构成的）
+
+### 命名函数表达式
+
+在 web 开发有关常用的模式是基于对某种特性的测试来伪装函数定义, 从而达到性能优化的目的
+
+但由于这种方式都是在同一作用域内, 所以基本上一定要用函数表达式
+
+```js
+var contains = (function () {
+  var docEl = document.documentElement;
+
+  if (typeof docEl.compareDocumentPosition != 'undefined') {
+    return function (el, b) {
+      return (el.compareDocumentPosition(b) & 16) !== 0;
+    };
+  } else if (typeof docEl.contains != 'undefined') {
+    return function (el, b) {
+      return el !== b && el.contains(b);
+    };
+  }
+
+  return function (el, b) {
+    if (el === b) return false;
+    while (el != b && (b = b.parentNode) != null);
+    return el === b;
+  };
+})();
+```
+
+命名函数表达式, 理所当然, 它得有名字, 前面的例子`var bar = function foo(){};`就是一个有效的命名函数表达式
+
+有一点需要注意: 这个名字只在新定义的函数作用域内有效, 因为规范规定了标示符不能在外围的作用域内有效
+
+```js
+var fn = function foo() {
+  return typeof foo; // foo 是在内部作用域内有效
+};
+typeof foo; // foo 在外部是不可见的
+fo(); // function
+```
+
+### JScript 的 Bug
+
+1. 函数表达式的标识符泄露到外部作用域
+
+```js
+var f = function g() {};
+typeof g; // function
+```
+
+命名函数表达式的标示符在外部作用域是无效的, 但 JScript 明显是违反了这一规范, 上面例子中的标示符 g 被解析成函数对象
+
+2. 将命名函数表达式同时当作函数声明和函数表达式
+
+```js
+typeof g; // function
+var f = function g() {};
+```
+
+特性环境下, 函数声明会优先于任何表达式被解析, 上面的例子展示的是 JScript 实际上是把命名函数表达式当成函数声明了, 因为它在实际声明之前就解析了 g
+
+3. 命名函数表达式会创建两个截然不同的函数对象
+
+```js
+var f = function g() {};
+f === g; // false
+
+f.expando = 'foo';
+console.log(g.expando); // undefined
+```
+
+修改了任何一个对象, 另外一个没有什么改变, 通过例子可以发现, 创建 2 个不同的对象, 也就是说如果你想修改 f 的属性中保存某个信息, 然后使用不了引用相同对象的 g 的同名属性
+
+4. 仅仅顺序解析函数声明而忽略条件语句块
+
+```js
+var f = function g() {
+  return 1;
+};
+if (false) {
+  f = function g() {
+    return 2;
+  };
+}
+g(); //2
+```
+
+- g 被当作函数声明解析, 由于 JScript 中的函数声明不受条件代码块约束,
+  所以在这个很恶的 if 分支中, g 被当作另一个函数` function g(){ return 2 }`, 也就是又被声明了一次。
+- 有"常规的"表达式被求值, 而此时 f 被赋予了另一个新创建的对象的引用。由于在对表达式求值的时候, 永远不会进入这个可恶 if 分支,
+  因此 f 就会继续引用第一个函数`function g(){ return 1 }`。
+
+#### 不同的对象和 arguments.callee 相比较
+
+```js
+var f = function g() {
+  return [arguments.callee === f, arguments.callee === g];
+};
+// 不同的对象和arguments.callee相比较
+f(); // [true, false]
+g(); // [false, true]
+```
+
+5. 不包含声明的赋值语句中使用命名函数表达式
+
+```js
+(function () {
+  f = function () {};
+})();
+```
+
+原本是想创建一个全局属性 f(注意不要和一般的匿名函数混淆了, 里面用的是带名字的生命)
+
+- 它把表达式当作函数声明来解析, 所以左边的 f 被声明为局部变量了(和一般的匿名函数里的声明一样)
+- 在函数执行的时候, f 已经是定义过的了, 右边的 function f(){}则直接就赋值给局部变量 f 了
+
+结论: f 根本就不是全局属性
+
+#### 预防的问题
+
+1. 防范标识符泄露带到外部作用域
+2. 应该永远不引用被用作函数名称的标识符
+3. 关键就在于始终要通过 f 或者 arguments.callee 来引用函数, 如果你使用了命名函数表达式，那么应该只在调试的时候利用那个名字
+4. 一定要把命名函数表达式声明期间错误创建的函数清理干净
