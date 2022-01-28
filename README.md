@@ -470,8 +470,35 @@ eval() 可以干扰作用域链, 而 Function()更安分守己
 })();
 
 // 使用Function和new Function是相同的
-(function(){
+(function () {
   var local = 1;
-  Function("console.log(typeof local);")(); // undefined
-})
+  Function('console.log(typeof local);')(); // undefined
+})();
 ```
+
+### parseInt() 下的数值转换
+
+使用 parseInt() 可以从字符串中获取数值, 该方法接受另一个基数参数, 这经常会被省略, 但是这不应该
+
+当字符串以 "0" 开头的时候就有可能会出问题
+
+```js
+var month = '06',
+  year = '09';
+
+mouth = parseInt(month, 10);
+year = parseInt(year, 10);
+```
+
+如果忽略了基数参数, 如 parseInt(year)返回的值将会是 0
+
+因为"09"被当作 8 进制(好比执行 parseInt(year, 8)), 而 09 在 8 进制中不是有效数字
+
+```js
++'08'; // 8
+Number('08'); // 8
+```
+
+这些通常快于 parseInt(), 因为 parseInt()方法, 顾名思意, 不是简单地解析与转换。
+
+但是, 如果你想输入例如"08 hello", parseInt()将返回数字, 而其它以 NaN 告终。
