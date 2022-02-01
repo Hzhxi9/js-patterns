@@ -108,10 +108,62 @@ console.log(Object.getPrototypeOf(n1) === Person.prototype);
 
 /**
  * 3. 对象会记住它的原型
- * 
+ *
  * 请求可以在一个链条中依次往后传递, 那么每个节点都必须知道它的下一个节点
- * 
+ *
  * 对象的原型: 是对象的构造器有原型
- * 
- * "对象把请求委托给它自己的原型": 对象把请求委托给它的构造器的原型
+ *
+ * " 对象把请求委托给它自己的原型 ": 对象把请求委托给它的构造器的原型
+ *
+ * 对象如何把请求顺利地转交给它的构造器原型？
+ *
+ * JavaScript 给对象提供了一个 __proto__  的隐藏属性, 某个对象的 __proto__属性默认会指向它的构造器的原型对象, 即 Constructor.prototype
+ *
+ * __proto__ 就是对象跟 "对象构造器的原型" 联系起来的纽带
  **/
+
+var o1 = new Object();
+console.log(o1.__proto__ === Object.prototype); // true
+
+/**
+ * 4. 如果对象无法响应某个请求, 它会把这个请求委托给它的构造器原型
+ *
+ * 当一个对象无法响应某个请求时, 他会顺着原型链把请求传递下去, 直到遇到一个可以处理该请求的对象为止
+ *
+ * JavaScript中, 每个对象最初都是从 Object.prototype 对象克隆而来的
+ * 但对象构造器的原型并不仅限于 Object.prototype 上, 而是可以动态指向其他对象、
+ *
+ * 当对象 a 需要借用对象 b 的能力时, 可以有选择地把 对象a 的构造器的原型指向对象 b, 从而达到继承的效果
+ */
+var obj = { name: 'name' };
+var A = function () {};
+
+A.prototype = obj;
+var a = new A();
+console.log(a.name) // name
+
+/**
+ * 1. 尝试遍历对象 a 中的所有属性, 但没有找到 name 这个属性
+ * 2. 查找 name 属性的这个请求被委托给对象 a 的构造器的原型, 它被 a.__proto__记录着并且指向 A.prototype, 而 A.prototype 被设置为对象 obj
+ * 3. 在对象 obj 中找到 name 属性, 并且返回它的值
+ */
+
+
+/**
+ * 当期望得到一个类 继承来自另外一个类时
+ * 
+ * 1. 尝试遍历对象 a 中的所有属性, 但没有找到 name 这个属性
+ * 2. 查找 name 属性的请求被委托给对象 b 的构造器的原型, 它被 b.__proto__ 记录着并指向 B.prototype, 而B.prototype 被设置为一个通过 new A() 创建出来的对象
+ * 3. 在该对象中依然没有找到该 name 属性时, 于是请求被继续委托给这个对象构造器的原型 A.prototype 
+ * 4. 在 A.prototype 中找到了 name 属性, 于是请求被继续委托给这个对象构造器的原型
+ */
+var B = function () {}
+B.prototype = new A();
+
+var b = new B();
+console.log(b.name); // name
+
+
+/**
+ * 原型链不是无限长的, 最终传递到 Object.prototype(null) 结束
+ */
