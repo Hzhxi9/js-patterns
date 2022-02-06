@@ -1,4 +1,30 @@
 /**
+ * 原型链
+ * 1. 实例有 __proto__ 并指向 构造函数的 prototype
+ * 2. 构造函数有 __proto__ 并指向 Function.prototype、prototype 
+ * 3. 构造函数的 prototype 有 constructor 并指向 构造函数, 也有 __proto__ 并指向 Object.prototype
+ * 4. Object.prototype 有 __proto__ 并指向 null
+ * 
+ * 
+ * 概念
+ * 1. 每个对象都可以有一个原型 __proto__, 这个原型还可以有自己的原型, 以此类推, 形成一个原型链
+ * 2. 查找特定属性的时候, 先去这个对象里去找, 如果没有的话再去它的原型对象里面去找, 如果还是没有的话再去原型对象的原型对象里去找,
+ *    这个操作被委托在整个原型链上, 就是原型链
+ * 
+ * 原型指针
+ * 1. prototype
+ *    - 函数独有, 它是从一个函数指向一个对象, 含义是函数的原型对象, 也就是这个函数(其实所有函数都可以作为构造函数)所创建的实例的原型对象
+ *    - 这个属性是一个指针, 指向一个对象, 这个对象的用途就是包含所有实例共享的属性和方法(我们把这个对象叫做原型对象)
+ * 
+ * 2. __proto__
+ *    - 原型链查询实际用到的, 他总是指向prototype(指向构造函数的原型对象)
+ *   
+ * 总结
+ * 1. Foo 构造函数 __proto__ 指向 他的构造函数的原型对象, 它的构造函数是Function, 也就是 Foo.__proto__ 指向 Function.prototype
+ * 2. 实例(new Foo) 指向 Foo.prototype，它的构造函数就是 Foo(), 即 a.__proto = Foo.prototype
+ * 3. Function.prototype 它的 __proto__ 指向 Object.prototype(null)
+ * 4. 原型链条的指向就是 函数 -> 构造函数 -> Function.prototype -> Object.prototype -> null
+ * 
  * 原型模式
  *
  * 1. 概念
