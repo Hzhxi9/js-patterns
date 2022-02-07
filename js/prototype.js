@@ -18,12 +18,22 @@
  * 
  * 2. __proto__
  *    - 原型链查询实际用到的, 他总是指向prototype(指向构造函数的原型对象)
+ * 
+ * 3. constructor 
+ *    - 每个函数都有一个原型对象, 该原型对象有一个 constructor 属性, 指向创建对象的函数本身
+ *    - 所有的实例对象都可以访问 constructor 属性, constructor 属性是创建实例对象的函数的引用, 我们可以使用 constructor 属性验证实例的原型类型
  *   
  * 总结
  * 1. Foo 构造函数 __proto__ 指向 他的构造函数的原型对象, 它的构造函数是Function, 也就是 Foo.__proto__ 指向 Function.prototype
  * 2. 实例(new Foo) 指向 Foo.prototype，它的构造函数就是 Foo(), 即 a.__proto = Foo.prototype
  * 3. Function.prototype 它的 __proto__ 指向 Object.prototype(null)
  * 4. 原型链条的指向就是 函数 -> 构造函数 -> Function.prototype -> Object.prototype -> null
+ * 5. __proto__ 是原型链查询中实际用到的, 它总是指向 prototype 
+ * 6. prototype 是函数独有的, 在定义构造函数时自动创建的, 总是被 __proto__ 所指。
+ * 7. 所有对象都有 __proto__ 属性, 函数这个特殊对象除了具有 __proto__ 属性, 还有特有的原型属性 prototype
+ * 8. prototype 对象默认有两个属性, constructor 属性 和 __proto__ 属性
+ * 9. prototype 属性可以给函数和对象添加共享(继承)的方法、属性, 而 __proto__ 是查找某函数或对象的原型链方式
+ * 10。这个属性包含了一个指针, 指回原构造函数
  * 
  * 原型模式
  *
