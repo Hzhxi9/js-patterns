@@ -206,3 +206,26 @@ var obj44 = {
 };
 console.log(obj4.getName4()); // sven5
 console.log(obj4.getName4.call(obj44)); // anne
+
+/**
+ * 丢失的 this
+ */
+
+/**
+ * 这段代码抛出异常
+ * 这是因为许多引擎的 document.getElementById 方法的内部实现中需要用到 this
+ * 这个 this 本来期望指向 document, 当 getElementById 方法作为 document 对象的属性被调用时候, 方法内部的 this 指向 document 的
+ *
+ * 当用 getId 来引用 document.getElementById 之后, 在调用 getId, 此时就指向了 window
+ */
+// var getId = document.getElementById;
+// getId('root');
+
+/**修正代码 */
+document.getElementById = (function (func) {
+  return function () {
+    return func.apply(document, arguments);
+  };
+})(document.getElementById);
+var getId = document.getElementById;
+getId('root');
