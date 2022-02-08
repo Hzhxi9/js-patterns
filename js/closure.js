@@ -158,3 +158,73 @@ var mult3 = (function () {
     return (cache[args] = calc.apply(null, arguments));
   };
 })();
+
+/**
+ * 2. 延续局部变量的寿命
+ *    img 对象经常用于进行数据上报
+ *    但是一些低版本浏览器的实现存在 bug, 调用 report 函数进行数据上报会丢失 30% 左右的数据, 也就是说 report 函数并不是每条都成功发起了 HTTP 请求
+ *    丢失数据的原因是 img 是 report 函数中的局部变量, 当 report 函数调用结束后, img 局部变量随即销毁
+ *    而此时好没来得及发出 HTTP 请求, 那么此次请求就会丢失掉
+ */
+
+/**丢失代码 */
+var report1 = function (src) {
+  var img = new Image();
+  img.src = src;
+};
+report1('xxx');
+
+/**使用闭包 */
+var report2 = (function () {
+  var imgs = [];
+  return function (src) {
+    var img = new Image();
+    imgs.push(src);
+    img.src = src;
+  };
+})();
+
+/**
+ * 闭包和面向对象设计
+ *
+ * 过程与数据的结合是形容面向对象中的对象时经常使用的表达
+ * 对象以方法的形态包含过程, 而闭包则是在过程中以环境的形式包含了数据
+ **/
+var extent1 = function () {
+  var value = 0;
+  return {
+    call: function () {
+      value++;
+      console.log(value);
+    },
+  };
+};
+var extent1 = extent1();
+extent1.call(); // 1
+extent1.call(); // 2
+extent1.call(); // 3
+
+/**面向对象写法 */
+var extent2 = {
+  value: 0,
+  call: function () {
+    this.value++;
+    console.log(thos.value);
+  },
+};
+extent2.call(); // 1
+extent2.call(); // 2
+extent2.call(); // 3
+
+/**构造函数写法 */
+var Extent3 = function () {
+  this.value = 0;
+};
+Extent3.prototype.call = function () {
+  this.value++;
+  console.log(this.value);
+};
+var extent3 = new Extent3();
+extent3.call(); // 1
+extent3.call(); // 2
+extent3.call(); // 3
