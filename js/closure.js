@@ -88,3 +88,56 @@ for (var i = 0, type; (type = ['String', 'Array', 'Number'][i++]); ) {
 }
 console.log(Type.isArray([]));
 console.log(Type.isString('str'));
+
+/**闭包的更多作用 */
+
+/**
+ * 1. 封装变量
+ *    可以帮助一些不需要暴露在全局的变量封装成私有变量
+ */
+
+/**mult 函数接受一些 number 类型的参数, 并返回这些参数的乘积 */
+var mult = function () {
+  var a = 1;
+  for (var i = 0, lens = arguments.length; i < lens; i++) a = a * arguments[i];
+  return a;
+};
+
+/**
+ * 那些相同的参数存进缓存
+ * 加入缓存机制提高这个函数的性能
+ **/
+var cache = {};
+var mult1 = function () {
+  var args = Array.prototype.join.call(arguments, ',');
+  if (cache[args]) return cache[args];
+
+  var a = 1;
+  for (var i = 0, lens = arguments.length; i < lens; i++) a = a * arguments[i];
+  return (cache[args] = a);
+};
+
+console.log(mult1(1, 2, 3));
+console.log(mult1(1, 2, 3));
+
+/**
+ * 👆代码中 cache 这个变量仅仅在 mult 函数中使用, 与其让 cache 变量跟 mult 函数一起平行暴露在全局作用域下, 不如把它封闭在函数内部里
+ *    1. 减少页面的全局变量
+ *    2. 避免这个变量在其他地方被不小心修改而引发错误
+ */
+var mult2 = (function () {
+  var cache = {};
+  return function () {
+    var args = Array.prototype.join.call(arguments, ',');
+    if (cache[args]) return cache[args];
+
+    var a = 1;
+    for (var i = 0, lens = arguments.length; i < lens; i++) a = a * arguments[i];
+    return (cache[args] = a);
+  };
+})();
+
+/**
+ * 提炼函数
+ *  
+ */
