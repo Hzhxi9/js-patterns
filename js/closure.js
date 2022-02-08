@@ -139,5 +139,22 @@ var mult2 = (function () {
 
 /**
  * 提炼函数
- *  
+ *   将一个大函数内的能够独立出来一些代码块封装在独立出来的小函数里面
+ *    - 提高复用性
+ *    - 有良好的命名, 能起到注释的作用
+ *
+ *   如果这小小函数不需要在程序的其他地方使用, 最好将他们用闭包封装起来
  */
+var mult3 = (function () {
+  var cache = {};
+  var calc = function () {
+    var a = 1;
+    for (var i = 0, len = arguments.length; i < len; i++) a = a * arguments[i];
+    return a;
+  };
+  return function () {
+    var args = Array.prototype.join.call(arguments, ',');
+    if (cache[args]) return cache[args];
+    return (cache[args] = calc.apply(null, arguments));
+  };
+})();
