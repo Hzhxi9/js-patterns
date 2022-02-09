@@ -228,3 +228,83 @@ var extent3 = new Extent3();
 extent3.call(); // 1
 extent3.call(); // 2
 extent3.call(); // 3
+
+/**
+ * 用闭包实现命令模式
+ *
+ * 命令模式
+ * 意图: 把请求封装为对象, 从而分离请求的发起者和请求的接收者(执行者)之间的耦合关系
+ *       在命令被执行之前, 可以预先往命令对象中植入命令的接收者
+ *
+ * 但在 JavaScript 中, 函数作为一等公民, 本身就可以四处传递, 用函数对象而不是普通对象来封装请求显得更加简单和自然
+ * 如果需要往函数对象中预先植入命令的接收者, 那么闭包可以完成这个工作
+ *
+ * 在面向对象版本的命令模式中, 预先植入的命令接收者被当成对象的属性保存起来
+ * 在闭包版本的命令模式中, 命令模式接收者会被封闭的闭包形成的环境中
+ **/
+
+var Tv = {
+  open: function () {
+    console.log('open the tv');
+  },
+  close: function () {
+    console.log('close the tv');
+  },
+};
+
+/**面向对象编写命令模式 */
+var OpenTvCommand = function (receiver) {
+  this.receiver = receiver;
+};
+
+OpenTvCommand.prototype.execute = function () {
+  this.receiver.open(); // 执行命令, 打开电视机
+};
+
+OpenTvCommand.prototype.undo = function () {
+  this.receiver.close(); // 撤销命令, 关闭电视机
+};
+
+/**闭包版本 */
+var createCommand = function (receiver) {
+  var execute = function () {
+    return receiver.open(); // 执行命令, 打开电视机
+  };
+  var undo = function () {
+    return receiver.close(); // 撤销命令, 关闭电视机
+  };
+  return { execute, undo };
+};
+
+var setCommand = function (command) {
+  document.getElementById('execute').onclick = function () {
+    command.execute(); // 输出: 打开电视机
+  };
+  document.getElementById('undo').onclick = function () {
+    command.undo(); // 输出: 关闭电视机
+  };
+};
+
+/**面向对象 */
+setCommand(new OpenTvCommand(Tv));
+
+/**闭包 */
+setCommand(createCommand(Tv));
+
+/**
+ * 闭包和内存管理
+ * 
+ * 局部变量应该在函数退出的时候就接触引用, 但如果局部变量被封闭在闭包形成的环境中, 那么这个局部就能一直生存下去(闭包会使一些数据无法被及时销毁)
+ * 
+ * 使用闭包的一部分原因是我们选择主动把一些变量封闭在闭包中, 因为可能在以后还需要使用这些变量,把这些变量放在闭包中和放在全局作用域, 对内存方面的影响是一致的, 这里并不能说成是内存泄露
+ * 如果在将来需要回收这些变量, 可以手动把这些变量设为 null
+ * 
+ * 闭包跟内存泄露的有关系地方
+ * 使用闭包的同时比较容易形成循环引用, 如果闭包的作用域链中保存着一些 DOM 节点, 这时候就有可能造成内存泄露
+ * 
+ * 原因: 并非闭包和 JavaScript 的问题, 在 IE 浏览器中, 由于 BOM 和 DOM 中的对象是使用 C++ 以 COM 对象的方式实现的, 而 COM 对象的垃圾收集机制采用的引用计数策略。
+ *      在基于引用计数策略的垃圾回收机制中, 如果两个对象之间形成了循环引用, 那么这两个对象都无法被回收, 但循环引用造成的内存泄露在本质上也不是闭包造成的 
+ * 
+ * 解决循环引用造成的内存泄露: 只需要把循环引用中的变量设置为 nuLl 即可。  
+ *                         将变量设置为 null 意味着切断变量与它此前引用的值之间的连接, 当垃圾回收机制执行时, 就会删除这些值并回收它们占有的内存
+ **/
