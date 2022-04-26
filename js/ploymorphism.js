@@ -6,7 +6,8 @@
  *    也就是给不同的对象发生同一消息的时候, 这些对象会根据这个消息分别给出不同的反馈
  *
  * 2. 思想
- *    "做什么"和"谁去做以及怎么样去做"分离开来, "不变的事物"和"可能改变的事物"分离开来
+ *    "做什么"和"谁去做以及怎么样去做"分离开来, 
+ *    "不变的事物"和"可能改变的事物"分离开来
  *
  * 3. 原则
  *    相对于修改代码, 增加代码就能完成同样的功能, 就会更优雅和安全
@@ -20,10 +21,15 @@
  *    - 通过把过程化的条件分支语句转化为对象的多态性, 从而消除这些条件分支语句
  *
  * 6. 面向对象设计的优点
+ *    - 每个对象应该做什么,已经成为了该对象的一个方法, 被安装在对象的内部,每个对象负责他们自己的行为
  *    - 将行为分布在各个对象中, 并让这些对象各自负责自己的行为
  */
 
-/**关于多态的代码 */
+/**
+ * 关于多态的代码 
+ * 
+ * 无法令人满意: 后续需要新增, 需要改动 makeSound 函数, 会使 makeSound 函数越来越庞大
+ **/
 var makeSound = function (animal) {
   if (animal instanceof Duck) {
     console.log('嘎嘎嘎');
@@ -35,8 +41,8 @@ var makeSound = function (animal) {
 var Duck = function () {};
 var Chicken = function () {};
 
-makeSound(new Duck());
-makeSound(new Chicken());
+makeSound(new Duck()); /**嘎嘎嘎 */
+makeSound(new Chicken()); /**咯咯咯 */
 
 /**修改后的代码 */
 var makeSound = function (animal) {
@@ -67,7 +73,7 @@ makeSound(new Chicken());
  *
  * 2. 解决方案
  *      - 静态类型的面向对象语言通常被设计为可以向上转型: 当给一个类变量赋值的时候, 这个变量的类型既可以使用这个类本身, 也可以使用这个类的超类
- *      - 也就是说, 当 Duck 对象和 Chicken 对象的类型都被隐藏在超类型 Animal 身后, Duck 对象和 Chicken 对象就能呗交换使用
+ *      - 也就是说, 当 Duck 对象和 Chicken 对象的类型都被隐藏在超类型 Animal 身后, Duck 对象和 Chicken 对象就能被交换使用
  *
  * 使用继承得到多态效果
  *

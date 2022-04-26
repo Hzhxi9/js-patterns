@@ -122,7 +122,7 @@ console.log(n.name); // sven
 console.log(n.getName()); // sven
 console.log(Object.getPrototypeOf(n) === Person.prototype); // true
 
-/**new 的是实现原理 */
+/**new操作符的实现原理 */
 var objectFactory = function () {
   /**从 Object。prototype 上克隆一个空对象 */
   var obj = new Object(),
