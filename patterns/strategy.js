@@ -5,6 +5,15 @@ j;
  *   - 目的: 将算法的使用与算法的实践实现分离开
  *   - 详细解释: 定义一系列的算法, 把他们各自封装成策略类, 算法被封装在策略类内部的方法里
  *              在客户对 Context 发起请求的时候, Context 总是把请求委托给这些策略对象中间的某一个进行计算
+ *   - 优点
+ *     - 利用组合、委托、多态等技术和思想, 可以有效地避免多重条件选择语句
+ *     - 提供了对外开放-封闭原则的完美支持, 将算法封装在独立的 strategy 中, 使得它们易于切换, 易于理解, 易于切换
+ *     - 复用在系统的其他地方, 从而避免许多重复的复制粘贴工作
+ *     - 利用组合和委托来让 Context 拥有执行算法的能力, 这也是继承的一种更轻便的替代方案
+ *  
+ *   - 缺点
+ *     - 会在程序中增加许多策略类或者策略对象
+ *     - 必须了解所有的 strategy, 必须了解各个 strategy 之间的不同点, 才能选择合适的 strategy (违背最少知识原则)
  * */
 
 /**
@@ -317,6 +326,12 @@ var Validator = function () {
   this.cache = [];
 };
 
+/**
+ *
+ * @param {*} dom 参与校验的 input 输入框
+ * @param {*} rule 字符串包含: => : 前面表示客户挑选的 strategies 对象, : 后面表示校验过程中所必需的一些参数 | 不包含: => 不需要额外的参数信息
+ * @param {*} errorMessage 当检验未通过是返回的错误信息
+ */
 Validator.prototype.add = function (dom, rule, errorMessage) {
   var ary = rule.split(':'); // 把 strategy 和参数分开
   /**把校验的步骤用空函数包装起来, 并且放入 cache */
@@ -332,5 +347,113 @@ Validator.prototype.start = function () {
   for (var i = 0, validatorFunc; (validatorFunc = this.cache[i++]); ) {
     var msg = validatorFunc(); // 开始校验, 并取得校验返回后的信息
     if (msg) return msg;
+  }
+};
+
+/**使用 Validator 类 */
+var validatorFunc = function () {
+  var validator = new Validator(); /**创建一个 validator 对象 */
+  /**添加一些校验规则 */
+  validator.add(register.username, 'isNonEmpty', '用户名不能为空');
+  validator.add(register.password, 'menLength:6', '密码长度不能小于6位');
+  validator.add(register.phoneNumber, 'isMobile', '手机号码格式不正确');
+
+  /**获得校验结果 */
+  var errorMessage = validator.start();
+  /**返回校验结果 */
+  return errorMessage;
+};
+
+var register = document.getElementById('registerForm');
+
+register.onsubmit = function () {
+  var errorMessage = validatorFunc();
+  /**如果 errorMessage 有确切的返回值, 说明未通过校验 */
+  if (errorMessage) {
+    alert(errorMessage);
+    /**阻止表单提交 */
+    return false;
+  }
+};
+
+/**🌰 : 给某个文本输入框添加多种校验规则 */
+
+/**
+ * <form action="http: //www.xxx.com/register" id="registerForm" method="post">
+ *    用户名: <input type="text" name="username" />
+ *    密 码: <input type="text" name="password" />
+ *    手机号码: <input type="text" name="phoneNumber" />
+ *    <button>提交</button>
+ * </form>
+ */
+
+/**策略对象 */
+var strategies = {
+  /**不为空 */
+  isNonEmpty: function (value, errorMessage) {
+    if (!value) return errorMessage;
+  },
+  /**限制最小长度 */
+  menLength: function (value, length, errorMessage) {
+    if (value.length < length) return errorMessage;
+  },
+  /**手机号码格式 */
+  isMobile: function (value, errorMessage) {
+    if (!/^1[3|5|8][0-9]{9}$/.test(value)) return errorMessage;
+  },
+};
+
+/**Validator 类 */
+var Validator = function () {
+  /**保存校验规则 */
+  this.cache = [];
+};
+
+Validator.prototype.add = function (dom, rules) {
+  var _this = this;
+  for (var i = 0, rule; (rule = rules[i++]); ) {
+    (function (rule) {
+      var strategyArr = rule.split(':');
+      var errorMessage = rule.errorMessage;
+
+      _this.cache.push(function () {
+        var strategy = strategyArr.shift();
+        strategyArr.unshift(dom.value);
+        strategyArr.push(errorMessage);
+        return strategies[strategy].apply(dom, strategyArr);
+      });
+    })(rule);
+  }
+};
+
+Validator.prototype.start = function () {
+  for (var i = 0, validatorFunc; (validatorFunc = this.cache[i++]); ) {
+    var errorMessage = validatorFunc();
+    if (errorMessage) return errorMessage;
+  }
+};
+
+/**客户调用代码 */
+var register = document.getElementById('registerForm');
+
+var validatorFunc = function () {
+  var validator = new Validator();
+
+  validator.add(register.username, [
+    { strategy: 'isNonEmpty', errorMessage: '用户名不能为空' },
+    { strategy: 'menLength:10', errorMessage: '用户名长度不能小于10位' },
+  ]);
+  validator.add(register.password, [{ strategy: 'menLength:6', errorMessage: '用户名长度不能小于6位' }]);
+  validator.add(register.phoneNumber, [{ strategy: 'isMobile', errorMessage: '手机号码格式不正确' }]);
+
+  var errorMessage = validator.start();
+  return errorMessage;
+};
+
+register.onsubmit = function () {
+  var errorMessage = validatorFunc();
+  if (errorMessage) {
+    alert(errorMessage);
+    return false;
   }
 };
