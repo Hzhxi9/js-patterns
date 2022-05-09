@@ -142,6 +142,7 @@ console.log(calculateBonus('A', 2000));
  *   3. 最后更新该 div 对应的 CSS 属性, 小球就能顺利的动起来
  */
 
+/**缓动算法 */
 var tween = {
   /**
    *
@@ -247,3 +248,89 @@ Animate.prototype.update = function (pos) {
 var div = document.getElementById('div');
 var animate = new Animate(div);
 animate.start('left', 500, 1000, 'strongEaseIn');
+
+/**
+ * 更广义的算法： 封装一系列的业务规则
+ * 🌰 : 表单校验
+ *   - 用户名不能为空
+ *   - 密码长度不能少于 6 位
+ *   - 手机号码必须符合格式
+ */
+
+/**
+ * <form action="http: //www.xxx.com/register" id="registerForm" method="post">
+ *    用户名: <input type="text" name="username" />
+ *    密 码: <input type="text" name="password" />
+ *    手机号码: <input type="text" name="phoneNumber" />
+ *    <button>提交</button>
+ * </form>
+ */
+
+/**
+ * @description 第一个版本
+ *
+ * 存在问题
+ *  - 函数庞大, 包含了很多 if-else 语句, 需要覆盖所有的校验规则
+ *  - 缺乏弹性
+ *  - 算法复用性差
+ * */
+var register = document.getElementById('registerForm');
+
+register.onsubmit = function () {
+  if (register.username.value) {
+    alert('用户名不能为空');
+    return false;
+  }
+  if (register.password.value.length < 6) {
+    alert('密码长度不能小于 6 位');
+    return false;
+  }
+  if (!/^1[3|5|8][0-9]{9}$/.test(register.phoneNumber.value)) {
+    alert('手机号码格式不正确');
+    return false;
+  }
+};
+
+/**
+ * @description 策略模式重构表单验证
+ */
+
+/**策略对象 */
+var strategies = {
+  /**不为空 */
+  isNonEmpty: function (value, errorMessage) {
+    if (!value) return errorMessage;
+  },
+  /**限制最小长度 */
+  menLength: function (value, length, errorMessage) {
+    if (value.length < length) return errorMessage;
+  },
+  /**手机号码格式 */
+  isMobile: function (value, errorMessage) {
+    if (!/^1[3|5|8][0-9]{9}$/.test(value)) return errorMessage;
+  },
+};
+
+/**Validator 类作为 Context, 负责接收用户的请求并委托给 strategy 对象 */
+var Validator = function () {
+  /**保存校验规则 */
+  this.cache = [];
+};
+
+Validator.prototype.add = function (dom, rule, errorMessage) {
+  var ary = rule.split(':'); // 把 strategy 和参数分开
+  /**把校验的步骤用空函数包装起来, 并且放入 cache */
+  this.cache.push(function () {
+    var strategy = ary.shift(); // 用户挑选的 strategy
+    ary.unshift(dom.value); // 把 input 的 value 添加到参数列表
+    ary.push(errorMessage); // 把 errorMessage 添加到参数列表
+    return strategies[strategy].apply(dom, ary);
+  });
+};
+
+Validator.prototype.start = function () {
+  for (var i = 0, validatorFunc; (validatorFunc = this.cache[i++]); ) {
+    var msg = validatorFunc(); // 开始校验, 并取得校验返回后的信息
+    if (msg) return msg;
+  }
+};
