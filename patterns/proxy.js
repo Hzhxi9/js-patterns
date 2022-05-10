@@ -212,3 +212,91 @@ for (var i = 0, c; (c = checkboxes[i++]); ) {
     if (this.checked) proxySyncHronousFiles(this.id);
   };
 }
+
+/**
+ * 🌰 : 虚拟代理在惰性加载中的应用(miniConsole.js)
+ *
+ * 需求: 希望有必要的时候才开始加载它, 比如当用户按下 F12 来主动唤出控制台的时候
+ *
+ * 实现:
+ *      - 在 miniConsole 加载之前, 为了能够让用户正常地使用里面的 API, 我们会使用一个占位的 miniConsole 的代理对象给用户提前使用
+ *        这个对象提供给用户的接口, 跟实际 miniConsole 是一样的
+ *
+ *      - 在 miniConsole 加载之前, 我们可以把打印 log 的请求都包裹在一个函数里面, 这个包装了请求的函数就先相当于其他语言中命令模式中的 Command 对象
+ *        随后这些函数将全部被放到缓存队列中, 这些逻辑都是在 miniConsole 代理对象中完成实现
+ *
+ *      - 开始加载真正的 miniConsole, 在加载完成之后将遍历 miniConsole 代理对象中的缓存函数队列, 同时依次执行它们
+ */
+
+/**未加载真正的 miniConsole 之前的代码 */
+var cache = [];
+var miniConsole = {
+  log: function () {
+    var args = arguments;
+    cache.push(function () {
+      return miniConsole.log.apply(miniConsole, args);
+    });
+  },
+};
+
+miniConsole.log(1);
+
+/**按下 F12, 开始加载真正的 miniConsole */
+var handler = function (ev) {
+  if (ev.keyCode === 113) {
+    var script = document.createElement('script');
+    script.onload = function () {
+      for (var i = 0, fn; (fn = cache[i++]); ) fn();
+    };
+    script.src = 'miniConsole.js';
+    document.getElementsByTagName('head')[0].appendChild(script);
+  }
+};
+
+document.body.addEventListener('keydown', handler, false);
+
+/**miniConsole.js */
+miniConsole = {
+  log: function () {
+    console.log(Array.prototype.join.call(arguments));
+  },
+};
+
+/**
+ * @fixme 保证 F12 被重复按下的时候, miniConsole 只被加载一次
+ * 将 miniConsole 处理成一个标准的虚拟代理对象
+ */
+var miniConsole = (function () {
+  var cache = [];
+  var handler = function (ev) {
+    if (ev.keyCode === 113) {
+      var script = document.createElement('script');
+      script.onload = function () {
+        for (var i = 0, fn; (fn = cache[i++]); ) fn();
+      };
+      script.src = 'miniConsole.js';
+      document.getElementsByTagName('head')[0].appendChild(script);
+      document.body.removeEventListener('keydown', handler); // 只被加载一次 miniConsole
+    }
+  };
+
+  document.body.addEventListener('keydown', handler, false);
+
+  return {
+    log: function () {
+      var args = arguments;
+      cache.push(function () {
+        return miniConsole.log.apply(miniConsole, args);
+      });
+    },
+  };
+})();
+
+miniConsole.log(1); // 开始打印 log
+
+/**miniConsole.js */
+miniConsole = {
+    log: function () {
+      console.log(Array.prototype.join.call(arguments));
+    },
+  };
