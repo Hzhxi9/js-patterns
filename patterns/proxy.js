@@ -33,6 +33,14 @@
  *
  *      - 用户可以放心的请求代理, 他只关心是否能够得到想要的结果
  *      - 在任何使用本体的地方都可以替换成使用代理
+ *
+ *  其他代理:
+ *    1. 防火墙代理: 控制网络资源的访问, 保护主机不让坏人接近
+ *    2. 远程代理: 为一个对象在不同的地址空间提供局部代表, 在 Java 中, 远程代理可以是另一个虚拟机中的对象
+ *    3. 保护代理: 用于对象应该有不同的访问权限的情况
+ *    4. 智能引用代理: 取代了简单的指针, 他在访问对象时执行一些附加操作, 比如计算一个对象被引用的次数
+ *    5. 写时复制代理: 通常用于复制一个庞大对象的情况, 写时复制代理延迟了复制的过程, 当对象被真正修改时, 才对它进行复制操作
+ *                   写时复制代理是虚拟代理的一种变体, DLL(操作系统中的动态链接库)是其典型运用场景
  */
 
 /**🌰 : 小明送花 */
@@ -296,7 +304,69 @@ miniConsole.log(1); // 开始打印 log
 
 /**miniConsole.js */
 miniConsole = {
-    log: function () {
-      console.log(Array.prototype.join.call(arguments));
-    },
+  log: function () {
+    console.log(Array.prototype.join.call(arguments));
+  },
+};
+
+/**@description 缓存代理: 可以为一些开销大的运算结果提供暂时的存储, 在下次运算的时候, 如果传进来的参数跟之前一致, 则可以直接返回前面存储的运算结果 */
+
+/**🌰 : 计算乘积 */
+var mult = function () {
+  var a = 1;
+  for (var i = 0, l = arguments.length; i < l; i++) {
+    a *= arguments[i];
+  }
+  return a;
+};
+
+var proxy_mult = (function () {
+  var cache = {};
+  return function () {
+    var args = Array.prototype.join.call(arguments, ',');
+    if (args in cache) return cache[args];
+    return (cache[args] = mult.apply(this, arguments));
   };
+})();
+
+proxy_mult(1, 2, 3, 4); // 24
+proxy_mult(1, 2, 3, 4); // 24
+
+/**
+ * 🌰 : ajax 异步请求数据
+ * @description 请求数据是个异步的操作, 无法直接把计算结果放到代理对象的缓存中, 而是要通过回调的方式
+ **/
+
+/**
+ * 🌰 : 用高阶函数动态创建代理
+ */
+
+/**计算乘积 */
+var mult = function () {
+  var a = 1;
+  for (var i = 0, l = arguments.length; i < l; i++) a *= arguments[i];
+  return a;
+};
+
+/**计算加法 */
+var plus = function () {
+  var a = 0;
+  for (var i = 0, l = arguments.length; i < l; i++) a += arguments[i];
+  return a;
+};
+
+/**创建缓存代理工厂 */
+var createProxyFactory = function (fn) {
+  var cache = {};
+  return function () {
+    var args = Array.prototype.join.call(arguments);
+    if (args in cache) return cache[args];
+    return (cache[args] = fn.apply(this, arguments));
+  };
+};
+
+var proxy_mult = createProxyFactory(mult),
+  proxy_plus = createProxyFactory(plus);
+
+console.log(proxy_plus(1, 2, 3, 4)); // 10
+console.log(proxy_plus(1, 2, 3, 4)); // 10
