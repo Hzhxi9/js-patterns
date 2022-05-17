@@ -370,3 +370,101 @@ var proxy_mult = createProxyFactory(mult),
 
 console.log(proxy_plus(1, 2, 3, 4)); // 10
 console.log(proxy_plus(1, 2, 3, 4)); // 10
+
+/**
+ * 🌰 : 代理模式添加异常处理
+ */
+
+/**
+ * 创建 Proxy 对象, 对目标对象 target 做一层包装, 拦截 get、set 操作
+ * @param {*} target 
+ * @returns 
+ */
+ function createProxy(target) {
+  const proxy = createExceptionProxy();
+  return new Proxy(target, {
+    get: proxy,
+    set: proxy,
+  });
+}
+
+/**
+ * 1. 如果 target 不包含 prop 返回空, 否则返回对应的的属性值 target[prop]
+ * 2. 如果属性值是函数, 则做一层包装
+ * @returns 
+ */
+function createExceptionProxy() {
+  return (target, prop) => {
+    if (!(prop in target)) return;
+    if (typeof target[prop] === 'function') return createProxExceptionZone(target, prop);
+    return target[prop];
+  };
+}
+
+function createProxExceptionZone(target, prop) {
+  return (...args) => {
+    let result;
+    /**
+     * 在这里拦截异常报错
+     * 调用目标方法, 并做 try/catch, 当出现异常的时候, 用 ExceptionHandler 来处理
+     **/
+    ExceptionZone.run(() => {
+      result = target[prop](...args);
+    });
+    return result;
+  };
+}
+
+class ExceptionHandler {
+  handler(exception){
+    console.log( "记录错误:", exception.name, exception.message, exception.stack);
+  }
+}
+
+class ExceptionZone {
+  static exceptionHandle = new ExceptionHandler();
+  /**同步方法 */
+  static run(callback) {
+    try {
+      callback();
+    } catch (error) {
+      this.exceptionHandle.handler(error, callback);
+    }
+  }
+  /**异步方法 */
+  static async asyncRun(callback){
+    try{
+      await callback()
+    }catch(error){
+      this.exceptionHandle.handler(error)
+    }
+  }
+ 
+}
+
+const obj = {
+  name: 'guang',
+  say() {
+      console.log('Hi, I\'m ' + this.name);
+  },
+  coding() {
+      //xxx
+      throw new Error('bug', () => {
+        console.log('sh')
+      });
+  },
+  async coding2() {
+      //xxx
+      throw new Error('bug2');
+  }
+}
+
+const proxy = createProxy(obj);
+
+proxy.say();
+
+proxy.coding();
+
+(async function(){
+  await ExceptionZone.asyncRun(proxy.coding2)
+})()
