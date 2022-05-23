@@ -17,6 +17,25 @@
  *      由来: 回调函数的一个面向对象的替代品
  *
  *
+ *      命令队列:
+ *
+ *        队列在动画中的运用场景：
+ *
+ *          比如之前的小球运动程序中有可能遇到另外一个问题, 有些用户反馈, 这个程序只适合于 APM 小于 20 的人群, 大部分用户都有快速连续点击按钮的习惯
+ *          当用户第二次点击 button 的时候, 此时小球的前一个动画可能尚未结束, 于是前一个动画骤然结束, 开始第二个动画的运动过程
+ *          这不是用户期望的, 用户希望两个动画会排队进行
+ *
+ *           把请求封装城命令对象, 对象的生命周期几乎是永久的, 除非我们主动去回收
+ *           也就是说, 命令对象的生命周期跟初始请求发生的时间无关, command 对象的 execute 方法可以在程序运动的任何时刻执行
+ *           即使点击按钮的请求早已发生, 但我们的命令对象仍然有生命
+ *
+ *           所以我们可以把 div 的这些运动过程都封装城命令对象, 再把它们压进一个队列堆栈,
+ *           当动画执行完, 也就是当前 command 对象的职责完成之后, 会主动通知队列, 此时取出正在队列中等待的第一个命令对象, 并且执行它
+ *
+ *        动画结束后如何通知队列:
+ *
+ *            - 通常可以使用回调函数来通知队列
+ *            - 可以选择发布订阅模式 (在一个动画结束后发布一个消息, 订阅者接收到这个消息之后, 便开始执行队列里的下一个动画)
  */
 
 /**
@@ -153,3 +172,190 @@ var setCommand = function (btn, command) {
 
 var refreshMenuBarCommand = RefreshMenuBarCommand(MenuBar);
 setCommand(btn1, refreshMenuBarCommand);
+
+/**
+ * 🌰 :撤销命令
+ * 需求: 让页面上的小球移动到水平方向的某个位置, 现在页面中有一个 input 文本框和 button 按钮
+ *      文本框中可输入一些数字, 让球移动水平方向的某个方向
+ *      小球在用户点击按钮后立刻开始移动
+ */
+
+/**
+ * <body>
+ *    <div id="ball" style="position: absolute; background: #000; width: 50px; height: 50px"></div>
+ *
+ *    输入小球移动后的位置: <input id="pos"/>
+ *    <button id="move-btn">开始移动</button>
+ *    <button id="cancel-btn">cancel</button> <!-- 增加撤销按钮 -->
+ * </body>
+ */
+
+var ball = document.getElementById('ball');
+var pos = document.getElementById('pos');
+var btn = document.getElementById('move-btn');
+var cancelBtn = document.getElementById('cancel-btn');
+
+btn.onclick = function () {
+  var animate = new Animation(ball);
+  animate.start('left', pos.value, 1000, 'strongEaseOut');
+};
+
+/**
+ * 现在需要增加一个方法还原到开始移动之前的位置 (使用命令模式)
+ *
+ * 原理:
+ *    撤销命令一般是给命令对象增加一个名为 unexecute or undo 的方法,
+ *    在该方法里执行 execute 的方向操作
+ *    在 command.execute 方法让小球开始真正运动之前, 我们需要先记录小球的当前位置,
+ *    在 unexecute 或者 undo 操作中, 再让小球回到刚刚记录下的位置
+ *
+ * 在命令模式中小球的原始位置移动前已经作为 command 对象的属性被保存起来,
+ * 所以只需要提供一个 undo 方法, 并且在 undo 方法中让小球回到刚刚记录的原始位置就可以了
+ **/
+var MoveCommand = function (receiver, pos) {
+  this.receiver = receiver;
+  this.pos = pos;
+  this.oldPos = null;
+};
+
+MoveCommand.prototype.execute = function () {
+  this.receiver.start('left', pos.value, 1000, 'strongEaseOut');
+  /**记录小球开始运动前的位置 */
+  this.oldPos = this.receiver.dom.getBoundingClientRect()[this.receiver.propertyName];
+};
+
+MoveCommand.prototype.unexecute = function () {
+  /**回到小球移动前记录的位置 */
+  this.receiver.start('left', this.oldPos, 1000, 'strongEaseOut');
+};
+
+var moveCommand;
+btn.onclick = function () {
+  var animate = new Animation(ball);
+  moveCommand = new MoveCommand(animate, pos.value);
+  moveCommand.execute();
+};
+
+cancelBtn.onclick = function () {
+  moveCommand.unexecute();
+};
+
+/**
+ * 🌰 : 撤消和重做
+ * 撤消一系列操作: 比如在一个围棋程序中, 现在已经下了 10 步棋, 我们需要一次性悔棋到第五步
+ *              在这之前我们可以把所有执行过的下棋命令都存储在一个历史列表中, 然后倒序循环来依次执行这些命令的 undo 操作,
+ *              直到循环执行到第5个命令为止
+ * 重做: 先清除画布, 然后把刚才执行过的命令全部重新执行一遍, 这一点同样可以利用一个历史列表堆栈办到,
+ *      记录命令日志, 然后重复执行它们
+ *
+ * 需求: 实现播放录像功能
+ */
+
+/**
+ * <body>
+ *    <button id="replay">播放录像</button>
+ * </body>
+ */
+var Ryu = {
+  attack: function () {
+    console.log('开始攻击');
+  },
+  defense: function () {
+    console.log('防御');
+  },
+  jump: function () {
+    console.log('跳跃');
+  },
+  crouch: function () {
+    console.log('蹲下');
+  },
+};
+var makeCommand = function (receiver, state) {
+  return function () {
+    /**创建命令 */
+    receiver[state]();
+  };
+};
+var commends = {
+  119: 'jump', // W
+  115: 'crouch', // S
+  97: 'defense', // A
+  100: 'attack', // D
+};
+
+var commandStack = []; // 保存命令的堆栈
+
+document.onkeypress = function (ev) {
+  var keyCode = event.keyCode,
+    command = makeCommand(Ryu, command[keyCode]);
+
+  if (command) {
+    command(); // 执行命令
+    commandStack.push(command); // 将刚刚执行过的命令保存进堆栈
+  }
+};
+
+/**点击播放录像 */
+document.getElementById('replay').onclick = function () {
+  var command;
+  while ((command = commandStack.shift())) {
+    /**从堆栈里依次取出命令并执行 */
+    command();
+  }
+};
+
+/**
+ * 🌰 : 宏命令
+ *
+ *    定义: 一组命令的集合, 通过执行宏命令的方式, 可以一次执行一批命令
+ *
+ *    需求: 按一个特别的按钮, 它就会帮我们关上房间门, 顺便打开电脑并登陆 QQ
+ * 
+ *    扩展: 还可以为宏命令添加撤销功能, 跟 macroCommand.execute 类似, 当调用 macroCommand.undo 方法时, 
+ *         宏命令里包含的所有子命令对象要依次执行各自的 undo 方法
+ */
+
+/**1. 创建好各种 Command 对象 */
+var closeDoorCommand = {
+  execute: function () {
+    console.log('关上门');
+  },
+};
+
+var openPCCommand = {
+  execute: function () {
+    console.log('打开电脑');
+  },
+};
+
+var openQQCommand = {
+  execute: function () {
+    console.log('打开 QQ');
+  },
+};
+
+/**
+ * 2. 定义宏命令 MacroCommand
+ *  MacroCommand.add 表示把子命令添加进宏命令对象,
+ *  当调用宏命令对象的 execute 方法时, 会迭代这一组子命令对象, 并且依次执行它们的 execute 方法
+ */
+var MacroCommand = function () {
+  return {
+    commends: [],
+    add: function (commend) {
+      this.commends.push(commend);
+    },
+    execute: function () {
+      for (var i = 0, commend; (commend = this.commends[i++]); ) {
+        commend.execute();
+      }
+    },
+  };
+};
+var macroCommand = new MacroCommand();
+
+macroCommand.add(closeDoorCommand);
+macroCommand.add(openPCCommand);
+macroCommand.add(openQQCommand);
+
+macroCommand.execute();
