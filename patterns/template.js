@@ -178,3 +178,153 @@ Beverage.prototype.pourInCup = function () {
 Beverage.prototype.addCondiments = function () {
   throw new Error('子类必须重写 addCondiments 方法');
 }; /**空方法, 应该由子类重写 */
+
+/**
+ * 🌰 : 钩子方法
+ *
+ * 既然 Beverage 作为父类, 已经规定好了冲泡顺序, 那么有什么办法可以让子类不受这歌约束
+ *
+ * 钩子方法(hook) 可以用来解决这个问题, 放置钩子是隔离变化的一种常见手段
+ * 我们在父类中容易变化的地方放置钩子, 钩子可以有一个默认的实现, 究竟要不要放置钩子这由子类自行决定
+ * 钩子犯法的返回结果决定了模板方法后面部分的执行步骤, 也就是程序接下来的走向
+ */
+var Beverage = function () {};
+
+Beverage.prototype.boilWater = function () {
+  console.log('把水煮沸');
+};
+
+Beverage.prototype.brew = function () {
+  throw new Error('子类必须重写 brew 方法');
+};
+
+Beverage.prototype.pourInCup = function () {
+  throw new Error('子类必须重写 pourInCup 方法');
+};
+
+Beverage.prototype.addCondiments = function () {
+  throw new Error('子类必须重写 addCondiments 方法');
+};
+
+Beverage.prototype.customerWantsCondiments = function () {
+  return true; /**默认需要调料 */
+};
+
+Beverage.prototype.init = function () {
+  this.boilWater();
+  this.brew();
+  this.pourInCup();
+  /**如果挂钩返回了 true, 则需要调料 */
+  if (this.customerWantsCondiments()) this.addCondiments();
+};
+
+var CoffeeWithHook = function () {};
+
+CoffeeWithHook.prototype = new Beverage();
+
+CoffeeWithHook.prototype.brew = function () {
+  console.log('用沸水冲泡咖啡');
+};
+
+CoffeeWithHook.prototype.pourInCup = function () {
+  console.log('把咖啡倒进杯子');
+};
+
+CoffeeWithHook.prototype.addCondiments = function () {
+  console.log('加糖和牛奶');
+};
+
+CoffeeWithHook.prototype.customerWantsCondiments = function () {
+  return window.confirm('请问需要调料吗?');
+};
+
+var coffeeWithHook = new CoffeeWithHook();
+
+coffeeWithHook.init();
+
+/**
+ * 🌰 :好莱坞原则
+ *
+ * 允许底层组件将自己挂钩到高层组件中, 而高层组件会决定什么时候, 以何种方式去使用这些底层组件, 高层组件对待底层组件的方式
+ * 跟演艺公司对待新人演员一样, 都是 "别调用我们, 我们会调用你"
+ *
+ * 模板方法模式是好莱坞原则的一个典型使用场景, 它们与好莱坞原则的联系非常明显
+ * 当我们用模板方法编写一个程序时, 就意味着子类放弃了对自己的控制权, 而是改为父类通知子类, 哪些方法应用在什么时候被调用
+ * 作为子类, 只负责提供一些设计上的细节
+ *
+ * 好莱坞原则应用场景:
+ *    - 发布-订阅模式
+ *
+ *      在发布订阅模式中, 发布者会把消息推送给订阅者, 这取代了原先不断去 fetch 消息的形式
+ *      例如假设我们乘坐出租车去一个不了解的地方, 除了每过五秒就问司机"是否到达目的地"之外
+ *      还可以在车上等待车达到目的地, 司机通知你
+ *      这也相当于好莱坞原则提到的 "别调用我们, 我们会调用你"
+ *
+ *    - 回调函数
+ *
+ *      在 ajax 异步请求中, 由于不知道请求返回的具体时间, 而通过轮询去判断是否返回数据, 这显然是不理智的行为
+ *      所以我们通常会把接下来的操作放在回调函数中, 传入发起 ajax 异步请求的函数
+ *      当数据返回之后, 这个回调函数才被执行, 这也是好莱坞原则的一种体现
+ *      把需要执行的操作封装在回调函数里, 然后把主动权交给另外一个函数
+ *      至于回调函数什么时候被执行, 则是另外一个函数控制
+ */
+
+/**
+ * 🌰 : 继承: 通过对象与对象之间的委托来实现的
+ *
+ * 模板方法模式是基于继承的一种设计模式, 父类封装了子类的算法框架和方法执行顺序, 子类继承父类之后, 父类通知子类执行这些方法
+ * 好莱坞原则很好诠释了这张设计技巧, 即高层组件调用底层组件
+ *
+ *
+ **/
+
+/**好莱坞原则指导下继承一样的效果 */
+var Beverage = function (param) {
+  var boilWater = function () {
+    console.log('把水煮沸');
+  };
+  var brew =
+    param.brew ||
+    function () {
+      throw new Error('必须传递 brew 方法');
+    };
+
+  var pourInCup =
+    param.pourInCup ||
+    function () {
+      throw new Error('必须传递 pourInCup 方法');
+    };
+
+  var addCondiments =
+    param.addCondiments ||
+    function () {
+      throw new Error('必须传递 addCondiments 方法');
+    };
+
+  var F = function () {};
+
+  F.prototype.init = function () {
+    boilWater();
+    brew();
+    pourInCup();
+    addCondiments();
+  };
+
+  return F;
+};
+
+var Coffee = Beverage({
+  brew: function () {
+    console.log('用沸水冲泡咖啡');
+  },
+  pourInCup: function () {
+    console.log('把咖啡倒进杯子里');
+  },
+  addCondiments: function () {
+    console.log('加糖和牛奶');
+  },
+});
+
+var coffee = new Coffee();
+
+coffee.init();
