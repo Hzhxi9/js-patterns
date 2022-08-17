@@ -262,3 +262,117 @@ startUpload('plugin', files2);
 startUpload('flash', files2);
 
 /**享元模式重构后, 对象数量为 2, 同时上传 2000 个文件, 创建的 upload 对象数量依旧为 2 */
+
+/**没有内部状态的享元 */
+/**🌰 : 不需要考虑极速上传(控件) 和普通上传(flash) 之间的切换, 这意味着在之前的代码中作为内部状态的 uploadType 属性是可以删除的 */
+var UploadFactory = (function () {
+  var uploadObj;
+  return {
+    /**对象没有内部状态的时候, 生产共享对象的工厂实际上变成了一个单例工厂 */
+    create: function () {
+      return uploadObj ? uploadObj : (uploadObj = new Upload());
+    },
+  };
+})();
+
+/**没有外部状态的享元 */
+/**
+ * 🌰 : 对象池
+ *
+ *    - 概念: 对象池维护一个装载空闲对象的池子, 如果需要对象的时候, 不是直接 new, 而是转从对象池中获取
+ *           如果对象池中没有空闲对象, 则创建一个新的对象, 当获取出的对象完成它的指责之后, 在进入池子等待被下次获取
+ *
+ *    - 应用场景: HTTP 连接池和数据库连接池都是其代表应用, 在 Web 前端开发中, 使用最多的场景就是跟 DOM 有关的操作
+ *
+ *    - 实现: 对象池实现 Tooltip
+ */
+
+/**获取小气泡节点的工厂 */
+var toolTipFactory = (function () {
+  /**私有属性: 作为对象池数组 */
+  var toolTipPool = [];
+
+  return {
+    /**获取一个 div 节点 */
+    create: function () {
+      if (toolTipPool.length === 0) {
+        /**如果对象池为空, 创建一个 dom */
+        var div = document.createElement('div');
+        document.body.appendChild(div);
+        return div;
+      } else {
+        /**如果对象池不为空, 则从池子中取出一个 dom */
+        return toolTipPool.shift();
+      }
+    },
+    /**回收一个 div 节点 */
+    recover: function (tooltipDom) {
+      /**对象池回收 dom */
+      return toolTipPool.push(tooltipDom);
+    },
+  };
+})();
+
+/**第一次搜索, 需要创建两个小气泡节点 */
+var ary = []; /**为了方便回收, 用一个数组记录它们 */
+
+for (var i = 0, str; (str = ['A', 'B'][i++]); ) {
+  var tooltip = toolTipFactory.create();
+  tooltip.innerHTML = str;
+  ary.push(tooltip);
+}
+
+/**需要开始重新绘制 */
+for (var i = 0, tooltip; (tooltip = ary[i++]); ) {
+  /**需要把这两个节点回收进对象池 */
+  toolTipFactory.remove(tooltip);
+}
+
+/**再创建 6 个小气泡 */
+for (var i = 0, str; (str = ['A', 'B', 'C', 'D', 'E', 'F'][i++]); ) {
+  /**上次创建好的节点被共享给了下一次的操作 */
+  var tooltip = toolTipFactory.create();
+  /**
+   * 虽然 innerHTML 的值给了 A、B、C 等也可以看成节点的外部状态
+   * 但这里并没有主动分离内部状态和外部状态的过程
+   */
+  tooltip.innerHTML = str;
+}
+
+/**🌰 : 通用对象池实现 */
+var ObjectPoolFactory = function (createObjFn) {
+  var objectPool = [];
+  return {
+    create: function () {
+      var obj = objectPool.length === 0 ? createObjFn.apply(this, arguments) : objectPool.shift();
+      return obj;
+    },
+    recover: function (obj) {
+      objectPool.push(obj);
+    },
+  };
+};
+/**测试: 创建一个装载一些 iframe 的对象池 */
+var iframeFactory = ObjectPoolFactory(function () {
+  var iframe = document.createElement('iframe');
+  document.body.appendChild(iframe);
+
+  iframe.onload = function () {
+    /**防止 iframe 重复加载 */
+    iframe.onload = null;
+    /**iframe 加载完成之后回收节点 */
+    iframeFactory.recover();
+  };
+  return iframe;
+});
+var iframe1 = iframeFactory.create();
+iframe1.src = 'http://www.baidu.com';
+
+var iframe2 = iframeFactory.create();
+iframe2.src = 'http://www.qq.com';
+
+
+setTimeout(() => {
+  var iframe3 = iframeFactory.create();
+  iframe3.src = 'http://www.163.com';
+}, 3000)
