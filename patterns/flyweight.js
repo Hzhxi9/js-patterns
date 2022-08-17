@@ -162,3 +162,103 @@ const files1 = [
 ];
 startUpload('plugin', files1);
 startUpload('flash', files1);
+
+/**
+ * 🌰 : 享元模式重构
+ *
+ *  - 确认插件类型 uploadType 是内部状态
+ *      upload 对象必须依赖 uploadType 属性才能工作, 因为插件上传、Flash上传、表单上传的实际工作原理有很大区别
+ *      它们各自调用的接口也是完全不一样的, 必须在对象创建之初就明确它是什么类型的插件, 才能在程序运行过程中, 让它们分别调用各自的 start、pause、cancel、del 等方法
+ *
+ *  - 一旦明确了 uploadType, 无论我们使用什么方式上传, 这个上传对象都是可以被任何文件共享的,
+ *    而 fileName 和 fileSize 是根据场景而变化的, 每个文件的 fileName 和 fileSize 都不一样,
+ *    所以没办法被共享, 只能被划分为外部状态
+ */
+
+/**剥离外部状态 */
+var Upload = function (uploadType) {
+  this.uploadType = uploadType;
+};
+
+Upload.prototype.delFile = function (id) {
+  /**
+   * 删除文件前, 需要读取文件的实际大小
+   * 文件大小被储存在外部管理器 uploadManager 中内
+   * 通过 UploadManager.setExternalState 方法给共享对象设置正确的 fileSize
+   */
+  UploadManager.setExternalState(id, this);
+
+  if (this.fileSize < 3000) return this.dom.parentNode.removeChild(this.dom);
+
+  if (window.confirm('确定要删除该(' + this.fileName + ')文件吗')) return this.dom.parentNode.removeChild(this.dom);
+};
+
+/**工厂进行对象实例化 */
+var UploadFactory = (function () {
+  var createdFlyWeightObjs = {};
+  return {
+    create: function (uploadType) {
+      /**如果内部状态对应的共享对象以及被创建过, 那么直接返回这个对象 */
+      if (createdFlyWeightObjs[uploadType]) return createdFlyWeightObjs[uploadType];
+      /**否则创建一个新的对象 */
+      return (createdFlyWeightObjs[uploadType] = new Upload(uploadType));
+    },
+  };
+})();
+
+/**
+ * 管理器封装外部状态
+ *   负责向 UploadFactory 提交创建对象的请求, 并用一个 uploadDatabase 对象保存所有 upload 对象的外部状态
+ *   以便于共享对象设置外部状态
+ */
+var UploadManager = (function () {
+  var uploadDatabase = {};
+
+  return {
+    add: function (id, uploadType, fileName, fileSize) {
+      var flyWeightObj = UploadFactory.create(uploadType);
+
+      var dom = document.createElement('div');
+
+      dom.innerHTML = `
+        <span>文件名称: ${fileName} 文件大小: ${fileSize}</span>
+        <button class="delBtn">删除</button>
+      `;
+
+      dom.querySelector('.delBtn').onclick = function () {
+        flyWeightObj.delFile(id);
+      };
+
+      document.body.appendChild(dom);
+
+      uploadDatabase[id] = { fileName, fileSize, dom };
+
+      return flyWeightObj;
+    },
+    setExternalState: function (id, flyWeightObj) {
+      var uploadData = uploadDatabase[id];
+      for (var key in uploadData) {
+        flyWeightObj[key] = uploadData[key];
+      }
+    },
+  };
+})();
+
+/**触发上传动作的 startUpload */
+var id = 0;
+window.startUpload = function (uploadType, files) {
+  for (var i = 0, file; (file = files[i++]); ) {
+    var uploadObj = UploadManager.add(++id, uploadType, file.fileName, file.fileSize);
+  }
+};
+
+/**测试上传 */
+const files2 = [
+  { fileName: '1.txt', fileSize: 1000 },
+  { fileName: '2.txt', fileSize: 2000 },
+  { fileName: '3.txt', fileSize: 1000 },
+];
+startUpload('plugin', files2);
+startUpload('flash', files2);
+
+/**享元模式重构后, 对象数量为 2, 同时上传 2000 个文件, 创建的 upload 对象数量依旧为 2 */
