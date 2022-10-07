@@ -78,4 +78,55 @@ class Linked {
     /**长度加一 */
     this.size++
   }
+  /**
+   * 删除操作
+   * @param {*} 下标
+   */
+  delete(position){
+    /**删除下标 */
+    if(position < 0 || position >= this.size) throw new Error('position out range')
+    /**获取当前链表(head) */
+    const linkList = this.head;
+    if(position === 0){
+      /**
+       * 如果删除的是链表的第一个元素
+       * 则 head 指向第一个元素的指针域(下一个元素)
+       */
+      this.head = linkList.next
+    } else {
+      /**中间删除 */
+      /**获取删除元素的上一个节点 */
+      const prevNode = this.getNode(position - 1);
+      /**将链表指向被删除元素上一个节点 */
+      linkList = prevNode.next;
+      /**将链表的的上一个节点指向被删除元素的下一个节点 */
+      prevNode.next = linkList.next;
+    }
+    /**长度减一 */
+    this.size--
+  }
+  /**
+   * 查找指定元素下标
+   * @param {*} item 
+   */
+  findIndex(item){
+    /**获取当前链表 */
+    const current = this.head;
+    for(let i = 0; i < this.size; i++){
+      /**如果current.item === item则说明该元素为需要查找的元素, 返回下标 */
+      if(current.item === item) return i
+      /**使链表指向他的下一个元素, 使循环可以继续 */
+      current = current.next
+    }
+    return null
+  }
+  /**
+   * 修改操作
+   * @param {*} position 修改元素的下标
+   * @param {*} item 修改的值
+   */
+  update(position, item){
+     const current = this.getNode(position);
+     current.item = item
+  }
 }
